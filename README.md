@@ -2,7 +2,7 @@
 
 ## Main Goal
 
-On any 4th-down scenario, accurately tell a coach which option (go for it, kick a field goal, or punt) gives their team the best chance of winning the game.
+On any 4th-down scenario, this project plans to accurately tell a coach which option (go for it, kick a field goal, or punt) gives their team the best chance of winning the game, including how clock-management affects that decision (bleeding clock, rushing a snap, etc.). 
 
 ## Plan
 
@@ -44,4 +44,6 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 
 ## Methodology
 
-Each model is validated using a season-based train/test split ()
+Each model is validated using a season-based train/test split (train on earlier seasons, test on held-out recent seasons) rather than in-sample evaluation to ensure generalized results. 
+
+The Conversion and Field Goal models compare logistic regression against GAMs using AUC, log loss, and Brier score. Both currently favor the GAM with the advantage holding and slightly increasing out-of-sample.  
