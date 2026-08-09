@@ -1,2 +1,47 @@
 # 4th-Down-Decision-Model
-Model that provides the best decision to do in a 4th down situation
+
+## Main Goal
+
+On any 4th-down scenario, accurately tell a coach which option (go for it, kick a field goal, or punt) gives their team the best chance of winning the game.
+
+## Plan
+
+1. Make three separate models to predict what's most likely to happen for one specific choice. Those options are:
+
+- **Conversion Model:** If they go for it, what's the probability they succeed?
+
+- **Field Goal Model:** If they kick, what's the probability it's good?
+
+- **Punt Model:** If they punt, where does the ball realistically end up?
+
+For a couple of rare-cases when considering the punting model (think blocked punt where the punting team doesn't recover, muffed punt where they do, etc.), the normal "field position formula" doesn't really apply since possession doesn't change hands the way it normally does. There wasn't enough data to model those cases separately with real precision, so I used representative constants pulled from the actual distribution of similar plays (strongly negative value for the bad case, a positive one for the recovery case) rather than letting the formula produce a misleading number.
+
+2. Create a **"Win Probability"** model where the actual decision gets made (turning the idea of "what happens" to "how much does this help/hurt the chances of winning").
+
+- Takes down distance, field position, score, time remaining, timeouts and the outputs of the three models from step 1 to convert each possible outcome into a single win probability if this certain scenario happens.
+
+3. Create an engine with the win probability model that compares the win probabilities for the team if:
+
+- They go for it and convert X conversion probability plus the win probability if they go for it and fail X (1- conversion probability)
+
+- They attempt the field goal and make it X field goal probability **plus** win probability if they miss X (1- field goal probability)
+
+- They punt the ball, giving the expected resulting field position.
+
+**Whichever of the three expected values is highest is the model's recommendation.**
+
+- Integrate a clock-management feature on top of this, which recognizes what the offense should do with the time they have (take a delay of game to bleed clock, rush to snap, etc.). this changes the value of time itself in certain situations, which shifts the win probability calculation slightly, but is still meaningful.
+
+## Status
+
+- [x] Conversion model (logistic regression vs. GAM, validated out-of-sample)
+- [x] Field goal model (logistic regression vs. GAM, validated out-of-sample)
+- [ ] Punt model (in progress)
+- [ ] Win probability model
+- [ ] Decision engine
+- [ ] Clock-management layer
+- [ ] Interactive app
+
+## Methodology
+
+Each model is validated using a season-based train/test split ()
