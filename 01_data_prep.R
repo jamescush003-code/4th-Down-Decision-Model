@@ -1,16 +1,11 @@
 # Load datasets and libraries
-
 library(nflfastR)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(stringr)
-
-# Works for GAM model
-library(mgcv)
-
-# Compare AUC values
-library(pROC)
+library(mgcv) # Works for GAM model
+library(pROC) # Compare AUC values
 
 # Filter data for only 4th down plays
 pbp <- load_pbp(2016:2023)
