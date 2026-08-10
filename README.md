@@ -36,7 +36,7 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 
 - [x] Conversion model (logistic regression vs. GAM, validated out-of-sample)
 - [x] Field goal model (logistic regression vs. GAM, validated out-of-sample)
-- [ ] Punt model (in progress)
+- [X] Punt model (linear regression vs. GAM, validated out-of-sample)
 - [ ] Win probability model
 - [ ] Decision engine
 - [ ] Clock-management layer
@@ -46,4 +46,4 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 
 Each model is validated using a season-based train/test split (train on earlier seasons, test on held-out recent seasons) rather than in-sample evaluation to ensure generalized results. 
 
-The Conversion and Field Goal models compare logistic regression against GAMs using AUC, log loss, and Brier score. Both currently favor the GAM with the advantage holding and slightly increasing out-of-sample.  
+The Conversion and Field Goal models compare logistic regression against GAMs using AUC, log loss, and Brier score, while the Punt model compares linear regression against GAMs using RMSE and MAE values. All three currently favor the GAM with the advantage holding and slightly increasing out-of-sample. 
