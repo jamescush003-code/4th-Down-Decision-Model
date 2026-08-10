@@ -1,12 +1,14 @@
 # 4th-Down-Decision-Model
 
+A 4th-down decision engine built on nflfastR data — separate models for conversion, field goal, and punt outcomes feeding into a win-probability comparison, with a clock-management layer on top.
+
 ## Main Goal
 
 On any 4th-down scenario, this project plans to accurately tell a coach which option (go for it, kick a field goal, or punt) gives their team the best chance of winning the game, including how clock-management affects that decision (bleeding clock, rushing a snap, etc.). 
 
 ## Plan
 
-1. Make three separate models to predict what's most likely to happen for one specific choice. Those options are:
+### 1. Make three separate models to predict what's most likely to happen for one specific choice. Those options are:
 
 - **Conversion Model:** If they go for it, what's the probability they succeed?
 
@@ -16,11 +18,11 @@ On any 4th-down scenario, this project plans to accurately tell a coach which op
 
 For a couple of rare-cases when considering the punting model (think blocked punt where the punting team doesn't recover, muffed punt where they do, etc.), the normal "field position formula" doesn't really apply since possession doesn't change hands the way it normally does. There wasn't enough data to model those cases separately with real precision, so I used representative constants pulled from the actual distribution of similar plays (strongly negative value for the bad case, a positive one for the recovery case) rather than letting the formula produce a misleading number.
 
-2. Create a **"Win Probability"** model where the actual decision gets made (turning the idea of "what happens" to "how much does this help/hurt the chances of winning").
+### 2. Create a **"Win Probability"** model where the actual decision gets made (turning the idea of "what happens" to "how much does this help/hurt the chances of winning").
 
 - Takes down distance, field position, score, time remaining, timeouts and the outputs of the three models from step 1 to convert each possible outcome into a single win probability if this certain scenario happens.
 
-3. Create an engine with the win probability model that compares the win probabilities for the team if:
+### 3. Create an engine with the win probability model that compares the win probabilities for the team if:
 
 - They go for it and convert X conversion probability plus the win probability if they go for it and fail X (1- conversion probability)
 
@@ -46,4 +48,15 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 
 Each model is validated using a season-based train/test split (train on earlier seasons, test on held-out recent seasons) rather than in-sample evaluation to ensure generalized results. 
 
-The Conversion and Field Goal models compare logistic regression against GAMs using AUC, log loss, and Brier score, while the Punt model compares linear regression against GAMs using RMSE and MAE values. All three currently favor the GAM with the advantage holding and slightly increasing out-of-sample. 
+The Conversion and Field Goal models compare logistic regression against GAMs using AUC, log loss, and Brier score, while the Punt model compares linear regression against GAMs using RMSE and MAE values. All three currently favor the GAM with the advantage holding and slightly increasing out-of-sample. Below are the calculated results for each model:
+
+| Model | Metric | Logistic/Linear | GAM |
+|---|---|---|---|
+| Conversion | AUC | 0.6793 | 0.6837 |
+| Conversion | Log Loss | 0.635 | 0.633 |
+| Conversion | Brier Score | 0.223 | 0.222 |
+| Field Goal | AUC | 0.7423 | 0.7448 |
+| Field Goal | Log Loss | 0.3643 | 0.3604 |
+| Field Goal | Brier Score | 0.113 | 0.112 | 
+| Punt | RMSE | 10.49 | 10.26 |
+| Punt | MAE | 7.21 | 6.94 | 
