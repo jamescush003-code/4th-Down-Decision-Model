@@ -39,7 +39,7 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 - [x] Conversion model (logistic regression vs. GAM, validated out-of-sample)
 - [x] Field goal model (logistic regression vs. GAM, validated out-of-sample)
 - [X] Punt model (linear regression vs. GAM, validated out-of-sample)
-- [ ] Win probability model
+- [X] Win probability model
 - [ ] Decision engine
 - [ ] Clock-management layer
 - [ ] Interactive app
@@ -48,7 +48,7 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 
 Each model is validated using a season-based train/test split (train on earlier seasons, test on held-out recent seasons) rather than in-sample evaluation to ensure generalized results. 
 
-The Conversion and Field Goal models compare logistic regression against GAMs using AUC, log loss, and Brier score, while the Punt model compares linear regression against GAMs using RMSE and MAE values. All three currently favor the GAM with the advantage holding and slightly increasing out-of-sample. Below are the calculated results for each model:
+The Conversion, Field Goal, and Win Probability models compare logistic regression against GAMs using AUC, log loss, and Brier score, while the Punt model compares linear regression against GAMs using RMSE and MAE values. The Conversion, Field Goal, and Punt models currently favor the GAM with the advantage holding and slightly increasing out-of-sample. Below are the calculated results for each model:
 
 | Model | Metric | Logistic/Linear | GAM |
 |---|---|---|---|
@@ -60,3 +60,10 @@ The Conversion and Field Goal models compare logistic regression against GAMs us
 | Field Goal | Brier Score | 0.113 | 0.112 | 
 | Punt | RMSE | 10.49 | 10.26 |
 | Punt | MAE | 7.21 | 6.94 | 
+| Win Prob. | AUC | 0.8131 | 0.8136 |
+| Win Prob. | Log Loss | 0.5223 | 0.5228 |
+| Win Prob. | Brier Score | 0.1762 | 0.1760 |
+
+The Win Probability model was the one exception: logistic regression and the GAM performed nearly identically (AUC 0.8131 vs. 0.8136, log loss 0.5223 vs. 0.5229, Brier 0.1762 vs. 0.1760), with the GAM narrowly winning two of three metrics but by margins too small to be meaningful. A calibration check across the full probability range (comparing predicted win probability against actual win rate in ten bins) confirmed the two models track almost identically, including in the mid (0.4-0.6) range representing close, competitive games, which matters most for the model's real-world use. Logistic regression was selected for the final Win probability model on this basis, given comparable performance and greater simplicity. 
+
+
