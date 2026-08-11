@@ -1,0 +1,16 @@
+wp_calibration_plot <- bind_rows(
+  wp_cal_log %>% mutate(model = "Logistic"),
+  wp_cal_gam %>% mutate(model = "GAM")
+) %>%
+  ggplot(aes(x = mean_pred, y = mean_actual, color = model)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray40") +
+  coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+  labs(
+    title = "Win Probability Model Calibration",
+    x = "Predicted win probability (bin average)",
+    y = "Actual win rate (bin average)"
+  )
+
+ggsave("results/wp_calibration.png", wp_calibration_plot, width = 8, height = 6, dpi = 150)
