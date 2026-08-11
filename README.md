@@ -66,4 +66,4 @@ The Conversion, Field Goal, and Win Probability models compare logistic regressi
 
 The Win Probability model was the one exception: logistic regression and the GAM performed nearly identically (AUC 0.8131 vs. 0.8136, log loss 0.5223 vs. 0.5229, Brier 0.1762 vs. 0.1760), with the GAM narrowly winning two of three metrics but by margins too small to be meaningful. A calibration check across the full probability range (comparing predicted win probability against actual win rate in ten bins) confirmed the two models track almost identically, including in the mid (0.4-0.6) range representing close, competitive games, which matters most for the model's real-world use. Logistic regression was selected for the final Win probability model on this basis, given comparable performance and greater simplicity. 
 
-
+![Win Probability Calibration](results/wp_calibration.png)
