@@ -12,6 +12,7 @@ flip_possession <- function(yardline_100, score_differential, timeouts_off, time
 #-----------------------------------------------------------------------------------------------------
 # 1. Go for it, succeed (results in 1st and 10 or goal-to-go, same team keeps ball)
 state_convert_success <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining){
+  
   new_yardline <- yardline_100 - ydstogo
   
   if (new_yardline <= 0){
@@ -249,9 +250,13 @@ get_win_prob <- function(state, wp_log_model){
 
 
 # 3. Make the actual Decision Function
-evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, conv_gam_model, fg_gam_model, punt_gam_model, wp_log_model, fail_yards_lookup, kicker_name, punter_name){
+
+# NOTE: this function depends on conv_gam_model, fg_gam_model, punt_gam_model, 
+# and wp_log_model already being loaded/fit in the environment — not passed in directly
+#
+evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, kicker_name, punter_name){
   
-# a. Get probabilities/predictions from each sub-model
+# A. Get probabilities/predictions from each sub-model
   
   ## input varaibles for conversion
   conv_input <- data.frame(
@@ -294,6 +299,62 @@ evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential
   ## expected net field position value
   punt_ev <- get_punt_net_value(punt_input)
   
-  ## b. Build the resulting states
+  ## B. Build the resulting states
+  s_convert_success <- state_convert_success(
+    yardline_100, ydstogo, score_differential, 
+    posteam_timeouts_remaining, defteam_timeouts_remaining, game_seconds_remaining)
+
+  s_convert_fail <- state_convert_fail(
+    yardline_100, ydstogo, score_differential, 
+    posteam_timeouts_remaining, defteam_timeouts_remaining, 
+    game_seconds_remaining, fail_yards_lookup)
+
+  s_fg_make <- state_fg_make(
+    score_differential, posteam_timeouts_remaining,
+    defteam_timeouts_remaining, game_seconds_remaining)
+
+  s_fg_miss <- state_fg_miss(
+    yardline_100, score_differential, posteam_timeouts_remaining,
+    defteam_timeouts_remaining, game_seconds_remaining)
+
+  s_punt <- state_punt(
+    yardline_100, score_differential, posteam_timeouts_remaining,
+    defteam_timeouts_remaining, game_seconds_remaining, punt_ev)
+
+  # attach qtr and posteam_type to each state (qtr carriers through unchanged, 
+  # posteam)type flips whenever possession changes hands)
+  s_convert_success$qtr <- qtr
+  s_convert_success$posteam_type <- posteam_type
   
+  s_convert_fail$qtr <- qtr
+  s_convert_fail$posteam_type <- ifelse(posteam_type == "home", "away", "home")
+  
+  s_fg_make$qtr <- qtr
+  s_fg_make$posteam_type <- ifelse(posteam_type == "home", "away", "home")
+  
+  s_fg_miss$qtr <- qtr
+  s_fg_miss$posteam_type <- ifelse(posteam_type == "home", "away", "home")
+  
+  s_punt$qtr <- qtr
+  s_punt$posteam_type <- ifelse(posteam_type == "home", "away", "home")
+
+  ## C. Get win probability for each resulting state
+  wp_convert_success <- get_win_prob(s_convert_success, wp_log_model)
+  wp_convert_fail <- get_win_prob(s_convert_fail, wp_log_model)
+  wp_fg_make <- get_win_prob(s_fg_make, wp_log_model)
+  wp_fg_miss <- get_win_prob(s_fg_miss, wp_log_model)
+  wp_punt <- get_win_prob(s_punt, wp_log_model)
+
+  ## D. Combine into expected values, choose the best option
+  ev_go_for_it <- conv_prob * wp_convert_success + (1 - conv_prob) * wp_convert_fail
+  ev_field_goal <- fg_prob * wp_fg_make + (1 - fg_prob) * wp_fg_miss
+  ev_punt <- wp_punt
+
+  results <- data.frame(
+    option = c("Go for it", "Field Goal", "Punt"),
+    expected_win_prob = c(ev_go_for_it, ev_field_goal, ev_punt)
+    )
+  recommendation <- results$option[which.max(results$expected_win_prob)]
+
+  list(results = results, recommendation = recommendation)
 }
