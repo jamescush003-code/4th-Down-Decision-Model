@@ -249,7 +249,7 @@ get_win_prob <- function(state, wp_log_model){
 
 
 # 3. Make the actual Decision Function
-evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential, game_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, goal_to_go, xpass, qtr, posteam_type, conv_gam_model, fg_gam_model, punt_gam_model, wp_log_model, fail_yards_lookup){
+evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, conv_gam_model, fg_gam_model, punt_gam_model, wp_log_model, fail_yards_lookup, kicker_name, punter_name){
   
 # a. Get probabilities/predictions from each sub-model
   
