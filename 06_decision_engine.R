@@ -10,8 +10,6 @@ flip_possession <- function(yardline_100, score_differential, timeouts_off, time
 #-----------------------------------------------------------------------------------------------------
 ## Outcome-state Buildiers
 #-----------------------------------------------------------------------------------------------------
-
-
 # 1. Go for it, succeed (results in 1st and 10 or goal-to-go, same team keeps ball)
 state_convert_success <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining){
   new_yardline <- yardline_100 - ydstogo
@@ -111,9 +109,9 @@ state_punt <- function(yardline_100, score_differential, timeouts_off, timeouts_
 }
 
 #-----------------------------------------------------------------------------------------------------
-## Placeholder values for hard-to-calculate input varaibles
+## Placeholder values and helper functions for actual model
 #-----------------------------------------------------------------------------------------------------
-# xpass placeholder by ydstogo bucket, from existing training data
+# Xpass placeholder by ydstogo bucket, from existing training data
 xpass_lookup <- fourth_go %>%
   filter(!is.na(xpass)) %>%
   mutate(ydstogo_bucket = case_when(
@@ -178,6 +176,52 @@ get_punter_stats <- function(punter_name, punter_lookup_table) {
   match %>% select(punter_career_gross_avg, punter_career_net_avg)
 }
 
+# Build FG model input
+build_fg_input <- function(yardline_100, 
+                           qtr, 
+                           game_seconds_remaining,
+                           score_differential,
+                           kicker_name,
+                           kicker_stats_table,
+                           weather_cat = "clear", #change later
+                           indoor = 0,
+                           surface = "grass"){
+    
+    kicker_info <- get_kicker_stats(kicker_name, kicker_stats_table)
+    
+    data.frame(
+      kick_distance = yardline_100 + 17,
+      yardline_100 = yardline_100,
+      qtr = qtr,
+      game_seconds_remaining = game_seconds_remaining,
+      score_differential = score_differential,
+      kicker_season_fg_pct = kicker_stats_table$kicker_season_fg_pct,
+      kicker_career_fg_pct = kicker_stats_table$kicker_career_fg_pct,
+      kicker_long_made = kicker_stats_table$kicker_long_made,
+      weather_cat = weather_cat,
+      indoor = indoor,
+      surface = surface
+    )
+  }
+
+#  Build the punt model input
+build_punt_input <- function(yardline_100, punter_name, punter_stats_table, weather_cat = "clear", indoor = 0, surface = "grass", returner_career_impact = league_avg_returner_impact, no_returner = FALSE){
+    punter_info <- get_punter_stats(punter_name, punter_stats_table)
+
+    data.frame(
+      yardline_100 = yardline_100,
+      weather_cat = weather_cat,
+      indoor = indoor,
+      surface = surface,
+      punter_career_gross_avg = punter_stats_table$punter_career_gross_avg,
+      punter_career_net_avg = punter_stats_table$punter_career_net_avg,
+      returner_career_impact = returner_career_impact,
+      no_returner = no_returner
+      )
+    }
+
+
+
 
 #-----------------------------------------------------------------------------------------------------
 ## Probability Weighting
@@ -226,40 +270,29 @@ evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential
   ## probability of converting
   conv_prob <- get_conv_prob(conv_input)
     
-    
-  ## build FG model input
-  build_fg_input <- function(yardline_100, 
-  qtr, 
-  game_seconds_remaining,
-  score_differential, kicker_name,
-  kicker_stats_table, 
-  weather_cat = "clear", #change later
-  indoor = 0,
-  surface = "grass"){
-    
-    kicker_info <- get_kicker_stats(kicker_name, kicker_stats_table)
-    
-    data.frame(
-      kick_distance = yardline_100 + 17,
-      yardline_100 = yardline_100,
-      qtr = qtr,
-      game_seconds_remaining = game_seconds_remaining,
-      score_differential = score_differential,
-      kicker_season_fg_pct = kicker_stats_table$kicker_season_fg_pct,
-      kicker_career_fg_pct = kicker_stats_table$kicker_career_fg_pct,
-      kicker_long_made = kicker_stats_table$kicker_long_made,
-      weather_cat = weather_cat,
-      indoor = indoor,
-      surface = surface
-    )
-  }
+
+  ## input variables for fg
+  fg_input <- build_fg_input(
+    yardline_100 = yardline_100,
+    qtr = qtr,
+    game_seconds_remaining = game_seconds_remaining,
+    score_differential = score_differential,
+    kicker_name = kicker_name,
+    kicker_stats_table = kicker_stats
+  )
   
-#   
+  ## probability of field goal
+  fg_prob <- get_fg_prob(fg_input)
     
-    
+  ## input variables for punt
+  punt_input <- build_punt_input(
+    yardline_100 = yardline_100, 
+    punter_name = punter_name,
+    punter_stats_table = punter_stats
+  )
   
-  fg_prob <- get_fg_prob() #fg make probability
-  punt_ev <- get_punt_net_value() #expected net field position value
+  ## expected net field position value
+  punt_ev <- get_punt_net_value(punt_input)
   
   ## b. Build the resulting states
   
