@@ -143,7 +143,7 @@ league_avg_punter_gross <- mean(punt_model_data$punter_career_gross_avg, na.rm =
 league_avg_punter_net <- mean(punt_model_data$punter_career_net_avg, na.rm = TRUE)
 league_avg_returner_impact <- mean(punt_model_data$returner_career_impact, na.rm = TRUE)
 
-get_kicker_stats <- function(kicker_name, kicker_stats_table) {
+get_kicker_stats <- function(kicker_name, kicker_stats_table){
   match <- kicker_stats_table %>%
     filter(kicker_player_name == kicker_name) %>%
     arrange(desc(game_id), desc(play_id)) %>%  # most recent known row for that kicker
@@ -161,7 +161,7 @@ get_kicker_stats <- function(kicker_name, kicker_stats_table) {
   match %>% select(kicker_season_fg_pct, kicker_career_fg_pct, kicker_long_made)
 }
 
-get_punter_stats <- function(punter_name, punter_lookup_table) {
+get_punter_stats <- function(punter_name, punter_lookup_table){
   match <- punter_lookup_table %>%
     filter(punter_player_name == punter_name) %>%
     arrange(desc(game_id), desc(play_id)) %>%
