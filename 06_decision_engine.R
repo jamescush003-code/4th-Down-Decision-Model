@@ -196,9 +196,9 @@ build_fg_input <- function(yardline_100,
       qtr = qtr,
       game_seconds_remaining = game_seconds_remaining,
       score_differential = score_differential,
-      kicker_season_fg_pct = kicker_stats_table$kicker_season_fg_pct,
-      kicker_career_fg_pct = kicker_stats_table$kicker_career_fg_pct,
-      kicker_long_made = kicker_stats_table$kicker_long_made,
+      kicker_season_fg_pct = kicker_info$kicker_season_fg_pct,
+      kicker_career_fg_pct = kicker_info$kicker_career_fg_pct,
+      kicker_long_made = kicker_info$kicker_long_made,
       weather_cat = weather_cat,
       indoor = indoor,
       surface = surface
@@ -214,15 +214,12 @@ build_punt_input <- function(yardline_100, punter_name, punter_stats_table, weat
       weather_cat = weather_cat,
       indoor = indoor,
       surface = surface,
-      punter_career_gross_avg = punter_stats_table$punter_career_gross_avg,
-      punter_career_net_avg = punter_stats_table$punter_career_net_avg,
+      punter_career_gross_avg = punter_info$punter_career_gross_avg,
+      punter_career_net_avg = punter_info$punter_career_net_avg,
       returner_career_impact = returner_career_impact,
       no_returner = no_returner
       )
     }
-
-
-
 
 #-----------------------------------------------------------------------------------------------------
 ## Probability Weighting
@@ -254,7 +251,7 @@ get_win_prob <- function(state, wp_log_model){
 # NOTE: this function depends on conv_gam_model, fg_gam_model, punt_gam_model, 
 # and wp_log_model already being loaded/fit in the environment — not passed in directly
 #
-evaluate_fourth_down <- function(down, ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, kicker_name, punter_name){
+evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, kicker_name, punter_name){
   
 # A. Get probabilities/predictions from each sub-model
   
