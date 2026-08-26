@@ -7,12 +7,11 @@ flip_possession <- function(yardline_100, score_differential, timeouts_off, time
     defteam_timeouts_remaining = timeouts_off 
   )
 }
-#-----------------------------------------------------------------------------------------------------
+
 ## Outcome-state Buildiers
-#-----------------------------------------------------------------------------------------------------
+
 # 1. Go for it, succeed (results in 1st and 10 or goal-to-go, same team keeps ball)
 state_convert_success <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining){
-  
   new_yardline <- yardline_100 - ydstogo
   
   if (new_yardline <= 0){
@@ -51,8 +50,9 @@ fail_yards_lookup <- fourth_go %>%
     avg_yards_gained_on_fail = mean(yards_gained, na.rm = TRUE), 
     n = n()
   )
+
   ## Helper to look up right value given specific ydstogo
-get_fail_yards <- function(ydstogo, failed_yards_lookup) {
+get_failed_yards <- function(ydstogo, failed_yards_lookup) {
   bucket <- case_when(
     ydstogo <= 2 ~ "short",
     ydstogo <= 5 ~ "medium",
@@ -63,9 +63,11 @@ get_fail_yards <- function(ydstogo, failed_yards_lookup) {
 }
 
   ## Create actual function for failed conversion
-state_convert_fail <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining, failed_yards_lookup){
-  expected_gain <- get_failed_yards(ydstogo, fail_lookup)
-    # Ball is placed at the new spot (og yardline - gained)
+state_convert_fail <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining, fail_yards_lookup){
+  
+  expected_gain <- get_failed_yards(ydstogo, fail_yards_lookup)
+  
+  # Ball is placed at the new spot (og yardline - gained)
   spot_after_fail <- max(yardline_100 - expected_gain, 1)
   flipped <- flip_possession(spot_after_fail, score_differential, timeouts_off, timeouts_def)
   c(list(down = 1, 
@@ -82,17 +84,20 @@ state_fg_make <- function(score_differnetial, timeouts_off, timeouts_def, game_s
   flipped <- flip_possession(75, score_differnetial + 3, timeouts_off, timeouts_def)
   c(list(down = 1,
          ydstogo = 10, 
-         game_seconds_remaining = max(seconds_remaining - 5, 0)),
+         game_seconds_remaining = max(game_seconds_remaining - 5, 0)),
     flipped)
 }
 
 
 # 4. Field goal missed (possession flips at spot of kick, roughly 7 yards behind the line of scrimmage)
 state_fg_miss <- function(yardline_100, score_differential, timeouts_off, timeouts_def, game_seconds_remaining){
+  
   spot_of_kick <- min(yardline_100 + 7, 99) #clip near goal line
+  
   flipped <- flip_possession(spot_of_kick, score_differential, timeouts_off, timeouts_def)
+  
   c(list(down = 1, 
-         ydstogo = 10, game_seconds_remaining,
+         ydstogo = 10,
          game_seconds_remaining = max(game_seconds_remaining -5, 0)),
     flipped)
 }
@@ -100,8 +105,11 @@ state_fg_miss <- function(yardline_100, score_differential, timeouts_off, timeou
 
 # 5. Punt (possession flips, field position from punt model's predicted net_value_final)
 state_punt <- function(yardline_100, score_differential, timeouts_off, timeouts_def, game_seconds_remaining, predicted_net_value){
+  
   new_receiving_yardline <- 100 - (yardline_100 - predicted_net_value) # translate net value into new field position
+  
   new_receiving_yardline <- min(max(new_receiving_yardline, 1), 99) #keep within bounds
+  
   flipped <- flip_possession(100 - new_receiving_yardline, score_differential, timeouts_off, timeouts_def)
   c(list(down = 1,
          ydstogo = 10, 
@@ -109,9 +117,9 @@ state_punt <- function(yardline_100, score_differential, timeouts_off, timeouts_
     flipped)
 }
 
-#-----------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 ## Placeholder values and helper functions for actual model
-#-----------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 # Xpass placeholder by ydstogo bucket, from existing training data
 xpass_lookup <- fourth_go %>%
   filter(!is.na(xpass)) %>%
@@ -162,6 +170,7 @@ get_kicker_stats <- function(kicker_name, kicker_stats_table){
 }
 
 get_punter_stats <- function(punter_name, punter_lookup_table){
+  
   match <- punter_lookup_table %>%
     filter(punter_player_name == punter_name) %>%
     arrange(desc(game_id), desc(play_id)) %>%
@@ -187,43 +196,51 @@ build_fg_input <- function(yardline_100,
                            weather_cat = "clear", #change later
                            indoor = 0,
                            surface = "grass"){
-    
-    kicker_info <- get_kicker_stats(kicker_name, kicker_stats_table)
-    
-    data.frame(
-      kick_distance = yardline_100 + 17,
-      yardline_100 = yardline_100,
-      qtr = qtr,
-      game_seconds_remaining = game_seconds_remaining,
-      score_differential = score_differential,
-      kicker_season_fg_pct = kicker_info$kicker_season_fg_pct,
-      kicker_career_fg_pct = kicker_info$kicker_career_fg_pct,
-      kicker_long_made = kicker_info$kicker_long_made,
-      weather_cat = weather_cat,
-      indoor = indoor,
-      surface = surface
-    )
-  }
+  
+  kicker_info <- get_kicker_stats(kicker_name, kicker_stats_table)
+  
+  data.frame(
+    kick_distance = yardline_100 + 17,
+    yardline_100 = yardline_100,
+    qtr = qtr,
+    game_seconds_remaining = game_seconds_remaining,
+    score_differential = score_differential,
+    kicker_season_fg_pct = kicker_info$kicker_season_fg_pct,
+    kicker_career_fg_pct = kicker_info$kicker_career_fg_pct,
+    kicker_long_made = kicker_info$kicker_long_made,
+    weather_cat = weather_cat,
+    indoor = indoor,
+    surface = surface
+  )
+}
 
 #  Build the punt model input
-build_punt_input <- function(yardline_100, punter_name, punter_stats_table, weather_cat = "clear", indoor = 0, surface = "grass", returner_career_impact = league_avg_returner_impact, no_returner = FALSE){
-    punter_info <- get_punter_stats(punter_name, punter_stats_table)
+build_punt_input <- function(yardline_100, 
+                             punter_name, 
+                             punter_stats_table,
+                             weather_cat = "clear", 
+                             indoor = 0, 
+                             surface = "grass", 
+                             returner_career_impact = league_avg_returner_impact,
+                             no_returner = FALSE){
+  
+  punter_info <- get_punter_stats(punter_name, punter_stats_table)
+  
+  data.frame(
+    yardline_100 = yardline_100,
+    weather_cat = weather_cat,
+    indoor = indoor,
+    surface = surface,
+    punter_career_gross_avg = punter_info$punter_career_gross_avg,
+    punter_career_net_avg = punter_info$punter_career_net_avg,
+    returner_career_impact = returner_career_impact,
+    no_returner = no_returner
+  )
+}
 
-    data.frame(
-      yardline_100 = yardline_100,
-      weather_cat = weather_cat,
-      indoor = indoor,
-      surface = surface,
-      punter_career_gross_avg = punter_info$punter_career_gross_avg,
-      punter_career_net_avg = punter_info$punter_career_net_avg,
-      returner_career_impact = returner_career_impact,
-      no_returner = no_returner
-      )
-    }
-
-#-----------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 ## Probability Weighting
-#-----------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 # 1. Get the three model outputs for the current situation
 get_conv_prob <- function(current_state){
   predict(conv_gam_model, newdata = current_state, type = "response")
@@ -250,10 +267,9 @@ get_win_prob <- function(state, wp_log_model){
 
 # NOTE: this function depends on conv_gam_model, fg_gam_model, punt_gam_model, 
 # and wp_log_model already being loaded/fit in the environment — not passed in directly
-#
 evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, kicker_name, punter_name){
   
-# A. Get probabilities/predictions from each sub-model
+  # A. Get probabilities/predictions from each sub-model
   
   ## input varaibles for conversion
   conv_input <- data.frame(
@@ -271,8 +287,8 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
   
   ## probability of converting
   conv_prob <- get_conv_prob(conv_input)
-    
-
+  
+  
   ## input variables for fg
   fg_input <- build_fg_input(
     yardline_100 = yardline_100,
@@ -285,7 +301,7 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
   
   ## probability of field goal
   fg_prob <- get_fg_prob(fg_input)
-    
+  
   ## input variables for punt
   punt_input <- build_punt_input(
     yardline_100 = yardline_100, 
@@ -300,24 +316,24 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
   s_convert_success <- state_convert_success(
     yardline_100, ydstogo, score_differential, 
     posteam_timeouts_remaining, defteam_timeouts_remaining, game_seconds_remaining)
-
+  
   s_convert_fail <- state_convert_fail(
     yardline_100, ydstogo, score_differential, 
     posteam_timeouts_remaining, defteam_timeouts_remaining, 
     game_seconds_remaining, fail_yards_lookup)
-
+  
   s_fg_make <- state_fg_make(
     score_differential, posteam_timeouts_remaining,
     defteam_timeouts_remaining, game_seconds_remaining)
-
+  
   s_fg_miss <- state_fg_miss(
     yardline_100, score_differential, posteam_timeouts_remaining,
     defteam_timeouts_remaining, game_seconds_remaining)
-
+  
   s_punt <- state_punt(
     yardline_100, score_differential, posteam_timeouts_remaining,
     defteam_timeouts_remaining, game_seconds_remaining, punt_ev)
-
+  
   # attach qtr and posteam_type to each state (qtr carriers through unchanged, 
   # posteam)type flips whenever possession changes hands)
   s_convert_success$qtr <- qtr
@@ -334,24 +350,32 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
   
   s_punt$qtr <- qtr
   s_punt$posteam_type <- ifelse(posteam_type == "home", "away", "home")
-
+  
   ## C. Get win probability for each resulting state
   wp_convert_success <- get_win_prob(s_convert_success, wp_log_model)
   wp_convert_fail <- get_win_prob(s_convert_fail, wp_log_model)
   wp_fg_make <- get_win_prob(s_fg_make, wp_log_model)
   wp_fg_miss <- get_win_prob(s_fg_miss, wp_log_model)
   wp_punt <- get_win_prob(s_punt, wp_log_model)
-
+  
   ## D. Combine into expected values, choose the best option
   ev_go_for_it <- conv_prob * wp_convert_success + (1 - conv_prob) * wp_convert_fail
   ev_field_goal <- fg_prob * wp_fg_make + (1 - fg_prob) * wp_fg_miss
   ev_punt <- wp_punt
-
+  
+  PUNT_RELIABLE_THRESHOLD <- 45 #below this, punting is unrealistic and outside the punt model's reliable training data range
+  
+  if(yardline_100 < PUNT_RELIABLE_THRESHOLD){
+    ev_punt <- -Inf
+  } else{
+    ev_punt <- get_win_prob(s_punt, wp_log_model)
+  }
+  
   results <- data.frame(
     option = c("Go for it", "Field Goal", "Punt"),
     expected_win_prob = c(ev_go_for_it, ev_field_goal, ev_punt)
-    )
+  )
   recommendation <- results$option[which.max(results$expected_win_prob)]
-
+  
   list(results = results, recommendation = recommendation)
 }
