@@ -40,7 +40,7 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 - [x] Field goal model (logistic regression vs. GAM, validated out-of-sample)
 - [X] Punt model (linear regression vs. GAM, validated out-of-sample)
 - [X] Win probability model
-- [ ] Decision engine
+- [X] Decision engine
 - [ ] Clock-management layer
 - [ ] Interactive app
 
