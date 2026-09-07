@@ -2,9 +2,11 @@
 
 A 4th-down decision engine built on nflfastR data — separate models for conversion, field goal, and punt outcomes feeding into a win-probability comparison, with a clock-management layer on top.
 
+**Try it live: [https://jaycush-03.shinyapps.io/4th-down-decision-engine/]**
+
 ## Main Goal
 
-On any 4th-down scenario, this project plans to accurately tell a coach which option (go for it, kick a field goal, or punt) gives their team the best chance of winning the game, including how clock-management affects that decision (bleeding clock, rushing a snap, etc.). 
+On any 4th-down scenario, this project accurately tells a coach which option (go for it, kick a field goal, or punt) gives their team the best chance of winning the game, including how clock-management affects that decision (bleeding clock, rushing a snap, etc.). 
 
 ## Plan
 
@@ -36,12 +38,27 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 
 ## Status
 
-- [x] Conversion model (logistic regression vs. GAM, validated out-of-sample)
-- [x] Field goal model (logistic regression vs. GAM, validated out-of-sample)
+- [X] Conversion model (logistic regression vs. GAM, validated out-of-sample)
+- [X] Field goal model (logistic regression vs. GAM, validated out-of-sample)
 - [X] Punt model (linear regression vs. GAM, validated out-of-sample)
 - [X] Win probability model
 - [X] Decision engine
 - [X] Clock-management layer
-- [ ] Interactive app
+- [X] Interactive app
 
+## Running this locally
+1. Run `01_data_prep.R` through `05_win_probability_model.R` to pull data and train all models (requires `nflfastR`, several seasons, may take a few minutes).
+2. Run the `saveRDS()` steps at the end of the modeling notebook to save trained models and lookup tables to `models/`.
+3. Open `app.R` and run it — this loads the saved models and launches the app locally.
 
+## Methodology
+See `docs/methodology.md` for full details on data sources, model comparisons, validation results, known limitations, and the reasoning behind the decision engine and clock-management layer.
+
+Full validation results across all four models, and details on two guardrails added after engine-level testing (the punt model's unreliable low-yardline region, and the field goal model producing an unrealistic recommendation at extreme kick distances), are documented there.
+
+## A note on deployment
+Deploying this app to shinyapps.io surfaced two subtle bugs that didn't appear during local testing, both worth noting as a real part of this project's development:
+- **Environment scoping:** `source()`'s default behavior loads code into the global environment, which on a deployed server is separate from the environment holding the loaded models and data — fixed with `source("decision.engine.R", local = TRUE)`.
+- **An implicit library dependency:** `ggplot2` was being loaded automatically through the local development session and was never explicitly declared, causing chart rendering to fail only once deployed to a clean environment.
+
+Both were diagnosed using shinyapp.io's server logs (`rsconnect::showLogs()`) rather than guesswork. This was a good reminder that "works locally" and "works when deployed" aren't the same thing, even when the code looks identical. 
