@@ -47,6 +47,8 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 - [X] Interactive app
 
 ## Running Locally
+The trained models (`.rds` files) are not included in this repository due to file size (they must be generated locally before the app can run). 
+
 1. Run `01_data_prep.R` through `05_win_probability_model.R` to pull data and train all models (requires `nflfastR`, several seasons, may take a few minutes).
 2. Run the `saveRDS()` steps at the end of the modeling notebook to save trained models and lookup tables to `models/`.
 3. Open `app.R` and run it — this loads the saved models and launches the app locally.
