@@ -1,4 +1,4 @@
-# flip posession outcome
+#flip possession outcome
 flip_possession <- function(yardline_100, score_differential, timeouts_off, timeouts_def){
   list(
     yardline_100 = 100 - yardline_100,
@@ -8,7 +8,7 @@ flip_possession <- function(yardline_100, score_differential, timeouts_off, time
   )
 }
 
-## Outcome-state Buildiers
+## Outcome-state Builders
 
 # 1. Go for it, succeed (results in 1st and 10 or goal-to-go, same team keeps ball)
 state_convert_success <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining){
@@ -34,24 +34,11 @@ state_convert_success <- function(yardline_100, ydstogo, score_differential, tim
   )
 }
 
-# 2. Go for it,  fail (results in turnover on downs, possession flips at current spot)
 
-  ##Compute expected yards gained on failed attempts
-fail_yards_lookup <- fourth_go %>%
-  filter(convert == 0, !is.na(yards_gained)) %>%
-  mutate(ydstogo_bucket = case_when(
-    ydstogo <= 2 ~ "short",
-    ydstogo <= 5 ~ "medium",
-    ydstogo <= 10 ~ "long",
-    TRUE ~ "very_long"
-  )) %>%
-  group_by(ydstogo_bucket) %>%
-  summarize(
-    avg_yards_gained_on_fail = mean(yards_gained, na.rm = TRUE), 
-    n = n()
-  )
 
-  ## Helper to look up right value given specific ydstogo
+
+
+## Helper to look up right value given specific ydstogo
 get_failed_yards <- function(ydstogo, failed_yards_lookup) {
   bucket <- case_when(
     ydstogo <= 2 ~ "short",
@@ -62,7 +49,7 @@ get_failed_yards <- function(ydstogo, failed_yards_lookup) {
   failed_yards_lookup$avg_yards_gained_on_fail[failed_yards_lookup$ydstogo_bucket == bucket]
 }
 
-  ## Create actual function for failed conversion
+## Create actual function for failed conversion
 state_convert_fail <- function(yardline_100, ydstogo, score_differential, timeouts_off, timeouts_def, game_seconds_remaining, fail_yards_lookup){
   
   expected_gain <- get_failed_yards(ydstogo, fail_yards_lookup)
@@ -117,20 +104,25 @@ state_punt <- function(yardline_100, score_differential, timeouts_off, timeouts_
     flipped)
 }
 
-#---------------------------------------------------------------------------------------
-## Placeholder values and helper functions for actual model
-#---------------------------------------------------------------------------------------
-# Xpass placeholder by ydstogo bucket, from existing training data
-xpass_lookup <- fourth_go %>%
-  filter(!is.na(xpass)) %>%
-  mutate(ydstogo_bucket = case_when(
-    ydstogo <= 2 ~ "short",
-    ydstogo <= 5 ~ "medium",
-    ydstogo <= 10 ~ "long",
-    TRUE ~ "very_long"
-  )) %>%
-  group_by(ydstogo_bucket) %>%
-  summarize(avg_xpass = mean(xpass, na.rm = TRUE))
+# 1. Get the three model outputs for the current situation
+get_conv_prob <- function(current_state){
+  predict(conv_gam_model, newdata = current_state, type = "response")
+}
+
+get_fg_prob <- function(current_state){
+  predict(fg_gam_model, newdata = current_state, type = "response")
+}
+
+get_punt_net_value <- function(current_state){
+  predict(punt_gam_model, newdata = current_state, type = "response")
+}
+
+
+# 2. Run each constructed state through the wp model
+get_win_prob <- function(state, wp_log_model){
+  state_df <- as.data.frame(state)
+  predict(wp_log_model, newdata = state_df, type = "response")
+}
 
 get_xpass_placeholder <- function(ydstogo, xpass_lookup) {
   bucket <- case_when(
@@ -142,14 +134,7 @@ get_xpass_placeholder <- function(ydstogo, xpass_lookup) {
   xpass_lookup$avg_xpass[xpass_lookup$ydstogo_bucket == bucket]
 }
 
-## League average statistics for kickers, punters, and returners
-league_avg_kicker_season_fg_pct <- mean(fg_model_data$kicker_season_fg_pct, na.rm = TRUE)
-league_avg_kicker_career_fg_pct <- mean(fg_model_data$kicker_career_fg_pct, na.rm = TRUE)
-league_avg_kicker_long_made <- mean(fg_model_data$kicker_long_made, na.rm = TRUE)
 
-league_avg_punter_gross <- mean(punt_model_data$punter_career_gross_avg, na.rm = TRUE)
-league_avg_punter_net <- mean(punt_model_data$punter_career_net_avg, na.rm = TRUE)
-league_avg_returner_impact <- mean(punt_model_data$returner_career_impact, na.rm = TRUE)
 
 get_kicker_stats <- function(kicker_name, kicker_stats_table){
   match <- kicker_stats_table %>%
@@ -193,8 +178,8 @@ build_fg_input <- function(yardline_100,
                            score_differential,
                            kicker_name,
                            kicker_stats_table,
-                           weather_cat = "clear", #change later
-                           indoor = 0,
+                           weather_cat,
+                           indoor,
                            surface = "grass"){
   
   kicker_info <- get_kicker_stats(kicker_name, kicker_stats_table)
@@ -218,8 +203,8 @@ build_fg_input <- function(yardline_100,
 build_punt_input <- function(yardline_100, 
                              punter_name, 
                              punter_stats_table,
-                             weather_cat = "clear", 
-                             indoor = 0, 
+                             weather_cat, 
+                             indoor, 
                              surface = "grass", 
                              returner_career_impact = league_avg_returner_impact,
                              no_returner = FALSE){
@@ -238,40 +223,21 @@ build_punt_input <- function(yardline_100,
   )
 }
 
-#---------------------------------------------------------------------------------------
-## Probability Weighting
-#---------------------------------------------------------------------------------------
-# 1. Get the three model outputs for the current situation
-get_conv_prob <- function(current_state){
-  predict(conv_gam_model, newdata = current_state, type = "response")
-}
-
-get_fg_prob <- function(current_state){
-  predict(fg_gam_model, newdata = current_state, type = "response")
-}
-
-get_punt_net_value <- function(current_state){
-  predict(punt_gam_model, newdata = current_state, type = "response")
-}
-
-
-# 2. Run each constructed state through the wp model
-get_win_prob <- function(state, wp_log_model){
-  state_df <- as.data.frame(state)
-  predict(wp_log_model, newdata = state_df, type = "response")
-}
-
 
 
 # 3. Make the actual Decision Function
 
 # NOTE: this function depends on conv_gam_model, fg_gam_model, punt_gam_model, 
 # and wp_log_model already being loaded/fit in the environment — not passed in directly
-evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, kicker_name, punter_name){
+#
+evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game_seconds_remaining, half_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type, kicker_name, punter_name, weather_cat, indoor){
+  
+  message("Inside evaluate_fourth_down, checking xpass_lookup: ", exists("xpass_lookup"))
+  
   
   # A. Get probabilities/predictions from each sub-model
   
-  ## input varaibles for conversion
+  ## input variables for conversion
   conv_input <- data.frame(
     ydstogo = ydstogo,
     yardline_100 = yardline_100,
@@ -296,7 +262,9 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
     game_seconds_remaining = game_seconds_remaining,
     score_differential = score_differential,
     kicker_name = kicker_name,
-    kicker_stats_table = kicker_stats
+    kicker_stats_table = kicker_stats,
+    weather_cat = weather_cat,
+    indoor = indoor
   )
   
   ## probability of field goal
@@ -306,7 +274,9 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
   punt_input <- build_punt_input(
     yardline_100 = yardline_100, 
     punter_name = punter_name,
-    punter_stats_table = punter_stats
+    punter_stats_table = punter_stats,
+    weather_cat = weather_cat,
+    indoor = indoor
   )
   
   ## expected net field position value
@@ -371,6 +341,12 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
     ev_punt <- get_win_prob(s_punt, wp_log_model)
   }
   
+  FG_MAX_DISTANCE <- 60  # sits above the 99.5th percentile (58) of real attempts, while excluding clearly unrealistic distances (e.g., 73 yards)
+  
+  if ((yardline_100 + 17) > FG_MAX_DISTANCE) {
+    ev_field_goal <- -Inf
+  }
+  
   results <- data.frame(
     option = c("Go for it", "Field Goal", "Punt"),
     expected_win_prob = c(ev_go_for_it, ev_field_goal, ev_punt)
@@ -378,4 +354,54 @@ evaluate_fourth_down <- function(ydstogo, yardline_100, score_differential, game
   recommendation <- results$option[which.max(results$expected_win_prob)]
   
   list(results = results, recommendation = recommendation)
+}
+
+evaluate_clock_management <- function(down, ydstogo, score_differential, yardline_100, game_seconds_remaining, posteam_timeouts_remaining, defteam_timeouts_remaining, qtr, posteam_type){
+  
+  # 1. Milk (39 sec/play, no penalty) 
+  time_milk <- max(game_seconds_remaining - 39, 0)
+  state_milk <- list(
+    down = down, ydstogo = ydstogo, 
+    yardline_100 = yardline_100,
+    score_differential = score_differential,
+    game_seconds_remaining = time_milk,
+    posteam_timeouts_remaining = posteam_timeouts_remaining,
+    defteam_timeouts_remaining = defteam_timeouts_remaining,
+    qtr = qtr, posteam_type = posteam_type
+  )
+  
+  # 2. Delay (over 40 sec, 5-yard penalty, no possession change) 
+  time_delay <- max(game_seconds_remaining - 45, 0)  # a few extra seconds beyond the play clock max
+  state_delay <- state_milk
+  state_delay$game_seconds_remaining <- time_delay
+  state_delay$yardline_100 <- min(yardline_100 + 5, 99)  # penalty pushes you back 5 yards
+  
+  # 3. Rush (hurry-up, ~15 sec/play) 
+  time_rush <- max(game_seconds_remaining - 15, 0)
+  state_rush <- state_milk
+  state_rush$game_seconds_remaining <- time_rush
+  
+  # 4. Timeout (stops clock entirely, costs a timeout)
+  state_timeout <- state_milk
+  state_timeout$game_seconds_remaining <- game_seconds_remaining  # clock doesn't advance
+  state_timeout$posteam_timeouts_remaining <- max(posteam_timeouts_remaining - 1, 0)
+  
+  # 5. Normal (baseline tempo, ~25 sec/play)
+  time_normal <- max(game_seconds_remaining - 25, 0)
+  state_normal <- state_milk
+  state_normal$game_seconds_remaining <- time_normal
+  
+  # Get win probability for each strategy
+  wp_milk <- get_win_prob(state_milk, wp_log_model)
+  wp_delay <- get_win_prob(state_delay, wp_log_model)
+  wp_rush <- get_win_prob(state_rush, wp_log_model)
+  wp_timeout <- get_win_prob(state_timeout, wp_log_model)
+  wp_normal <- get_win_prob(state_normal, wp_log_model)
+  
+  results <- data.frame(
+    strategy = c("Milk", "Delay", "Rush", "Timeout", "Normal"),
+    expected_win_prob = c(wp_milk, wp_delay, wp_rush, wp_timeout, wp_normal)
+  )
+  
+  results[order(-results$expected_win_prob), ]  # ranked, best first
 }
