@@ -51,6 +51,8 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 2. Run the `saveRDS()` steps at the end of the modeling notebook to save trained models and lookup tables to `models/`.
 3. Open `app.R` and run it — this loads the saved models and launches the app locally.
 
+**Or skip local setup entirely and use the live version: [https://jaycush-03.shinyapps.io/4th-down-decision-engine/]**
+
 ## Methodology
 See `docs/methodology.md` for full details on data sources, model comparisons, validation results, known limitations, and the reasoning behind the decision engine and clock-management layer.
 
