@@ -107,7 +107,15 @@ End-to-end engine testing, rather than model-level metrics alone, surfaced two r
 
 ## 10. Deployment
 
-The engine and clock-management layer were wrapped in a Shiny app (`app.R`) and deployed publicly via shinyapps.io, making the tool accessible through a live, interactive interface rather than requiring users to run R code directly
+The engine and clock-management layer were wrapped in a Shiny app (`app.R`) and deployed publicly via shinyapps.io, making the tool accessible through a live, interactive interface rather than requiring users to run R code directly.
+
+The following files must exist in `models/` before running the app locally:
+- `conv_gam_model.rds`, `fg_gam_model.rds`, `punt_gam_model.rds`, `wp_log_model.rds`
+- `fail_yards_lookup.rds`, `xpass_lookup.rds`
+- `kicker_stats.rds`, `punter_stats.rds`
+- `league_avg_kicker_season_fg_pct.rds`, `league_avg_kicker_career_fg_pct.rds`, 
+  `league_avg_kicker_long_made.rds`, `league_avg_punter_gross.rds`, 
+  `league_avg_punter_net.rds`, `league_avg_returner_impact.rds`
 
 ### Application Structure
 
