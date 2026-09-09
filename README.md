@@ -46,7 +46,7 @@ For a couple of rare-cases when considering the punting model (think blocked pun
 - [X] Clock-management layer
 - [X] Interactive app
 
-## Running this Locally
+## Running Locally
 1. Run `01_data_prep.R` through `05_win_probability_model.R` to pull data and train all models (requires `nflfastR`, several seasons, may take a few minutes).
 2. Run the `saveRDS()` steps at the end of the modeling notebook to save trained models and lookup tables to `models/`.
 3. Open `app.R` and run it — this loads the saved models and launches the app locally.
